@@ -76,14 +76,13 @@ def process_file(cpu_count, start_end_chunks):
             else:
                 result[city] = values
 
+    def format_val(val):
+        return f"{val / 10:.1f}"
+
     for city in sorted(result):
-        min, max, total, count = result[city]
-        mean = total / count
-
-        def format(val):
-            return f"{val / 10:.1f}"
-
-        print(f"{city.decode('utf-8')}={format(min)}/{format(mean)}/{format(max)}")
+        min_val, max_val, total, count = result[city]
+        mean_val = total / count
+        print(f"{city.decode('utf-8')}={format_val(min_val)}/{format_val(mean_val)}/{format_val(max_val)}")
 
 
 if __name__ == "__main__":
