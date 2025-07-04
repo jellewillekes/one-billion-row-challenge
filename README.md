@@ -18,9 +18,13 @@ The original [One Billion Row Challenge](https://www.1brc.io/) asks you to write
   - Handle UTF-8 station names up to 100 bytes.
   - Max 10,000 unique station names.
 
+## Report
+
+- You can find a full explanation of the methodology, architecture choices, and optimization steps on this [Notion page](https://zest-fact-af2.notion.site/One-Billion-Row-Challenge-Roadmap-2267f1fac2f880999c66c6be95170085).
+
 ---
 
-## How we built it
+## How it was built
 
 We started from a straightforward approach and optimized step by step.
 
