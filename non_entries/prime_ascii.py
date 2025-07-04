@@ -28,21 +28,47 @@ def make_mmap_chunks(file_name: str, max_cpu: int = 8):
         start = end + 1
         if start >= size:
             break
-    return cpu_count, chunks
+    return chunks
 
 
 def agg_initializer():
     return [float('inf'), float('-inf'), 0, 0]
 
 
-def process_chunk_in_worker(args):
-    start, end = args
+def ascii_to_deciint(val_bytes):
+    sign = 1
+    i = 0
+    if val_bytes[0:1] == b"-":
+        sign = -1
+        i = 1
+
+    num = 0
+    found_dot = False
+    while i < len(val_bytes):
+        c = val_bytes[i:i+1]
+        if c == b".":
+            found_dot = True
+            i += 1
+            continue
+        num = num * 10 + (ord(c) - 48)
+        i += 1
+    if found_dot:
+        return sign * num
+    else:
+        return sign * num * 10
+
+
+def process_chunk(start, end, queue):
     result = defaultdict(agg_initializer)
     data = mm[start:end]
     for line in data.splitlines():
+        sep = line.find(b";")
+        if sep == -1:
+            continue
+        city = line[:sep]
+        val_bytes = line[sep+1:]
         try:
-            city, measurement = line.strip().split(b";")
-            measurement = float(measurement) * 10
+            measurement = ascii_to_deciint(val_bytes)
         except Exception:
             continue
         agg = result[city]
@@ -52,7 +78,7 @@ def process_chunk_in_worker(args):
             agg[1] = measurement
         agg[2] += measurement
         agg[3] += 1
-    return result
+    queue.put(dict(result))  # convert defaultdict to dict for pickling
 
 
 def merge_results(chunk_results):
@@ -75,9 +101,22 @@ def format_val(val):
 
 def process_file_from_path(filename):
     mp.set_start_method('fork', force=True)
-    cpu_count, chunks = make_mmap_chunks(filename)
-    with mp.Pool(cpu_count) as pool:
-        chunk_results = pool.map(process_chunk_in_worker, chunks)
+    chunks = make_mmap_chunks(filename)
+    queue = mp.Queue()
+
+    processes = []
+    for start, end in chunks:
+        p = mp.Process(target=process_chunk, args=(start, end, queue))
+        p.start()
+        processes.append(p)
+
+    chunk_results = []
+    for _ in processes:
+        chunk_results.append(queue.get())
+
+    for p in processes:
+        p.join()
+
     final_result = merge_results(chunk_results)
     for city in sorted(final_result):
         min_val, max_val, total, count = final_result[city]
@@ -87,9 +126,14 @@ def process_file_from_path(filename):
 
 if __name__ == "__main__":
     import argparse
+    import time
+    import sys
 
-    parser = argparse.ArgumentParser(description="Process billion row temperatures.")
+    parser = argparse.ArgumentParser(description="Process billion row temperatures (ASCII manual parse, tuned processes).")
     parser.add_argument("filename", type=str, help="measurements.txt file")
     args = parser.parse_args()
 
+    t0 = time.time()
     process_file_from_path(args.filename)
+    t1 = time.time()
+    print(f"\nProcessing took {t1 - t0:.2f} seconds", file=sys.stderr)
