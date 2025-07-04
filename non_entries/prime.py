@@ -1,13 +1,12 @@
 import os
 import argparse
-import time
-import sys
 import multiprocessing as mp
+import time
 
 
-def make_chunks(file_name: str, max_cpu: int = 8):
+def make_chunks(file_name: str):
     """Split file into chunks based on lines to prepare parallel processing."""
-    cpu_count = min(max_cpu, mp.cpu_count())
+    cpu_count = mp.cpu_count()
     file_size = os.path.getsize(file_name)
     chunk_size = file_size // cpu_count
 
